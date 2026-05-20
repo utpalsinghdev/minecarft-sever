@@ -412,6 +412,29 @@
 
     .connect strong { color: #000; }
 
+    .progress-wrap {
+      margin: 0.75rem 0 1rem;
+      display: none;
+    }
+    .progress-wrap.show { display: block; }
+    .progress-bar {
+      height: 16px;
+      background: #555;
+      border: 2px solid #000;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--grass-mid);
+      transition: width 0.2s;
+    }
+    .progress-label {
+      font-size: 7px;
+      color: #555;
+      margin-top: 0.35rem;
+    }
+
     /* ── Achievement-style toast ── */
     .toast {
       position: fixed;
@@ -483,9 +506,13 @@
             <label for="worldName">World name (optional)</label>
             <input type="text" id="worldName" placeholder="my-world" />
           </div>
-          <button type="button" class="mc-primary" id="uploadBtn">Upload</button>
-        </div>
-        <p class="hint">Needs <code>level.dat</code> inside the zip. Drop = instant upload.</p>
+        <button type="button" class="mc-primary" id="uploadBtn">Upload</button>
+      </div>
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <p class="progress-label" id="progressLabel">Uploading…</p>
+      </div>
+      <p class="hint">Needs <code>level.dat</code> inside the zip. Large worlds take a few minutes on phone Wi‑Fi.</p>
       </section>
 
       <section>
@@ -633,17 +660,73 @@
       document.getElementById("worldName").placeholder = "my-world";
     }
 
+    function setProgress(pct, label) {
+      document.getElementById("progressWrap").classList.add("show");
+      document.getElementById("progressFill").style.width = pct + "%";
+      document.getElementById("progressLabel").textContent = label;
+    }
+
+    function hideProgress() {
+      document.getElementById("progressWrap").classList.remove("show");
+      document.getElementById("progressFill").style.width = "0%";
+    }
+
+    function uploadWithProgress(file, name) {
+      return new Promise((resolve, reject) => {
+        const fd = new FormData();
+        fd.append("file", file);
+        if (name) fd.append("name", name);
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/worlds/upload");
+        xhr.timeout = 60 * 60 * 1000;
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 100);
+            setProgress(pct, `Uploading… ${pct}% (${(e.loaded / 1024 / 1024).toFixed(1)} / ${(e.total / 1024 / 1024).toFixed(1)} MB)`);
+          } else {
+            setProgress(50, `Uploading… ${(e.loaded / 1024 / 1024).toFixed(1)} MB`);
+          }
+        };
+        xhr.onload = () => {
+          let data = {};
+          try { data = JSON.parse(xhr.responseText); } catch {}
+          if (xhr.status >= 200 && xhr.status < 300) resolve(data);
+          else reject(new Error(data.detail || data.message || xhr.statusText));
+        };
+        xhr.onerror = () => reject(new Error("Network error during upload"));
+        xhr.ontimeout = () => reject(new Error("Upload timed out"));
+        xhr.send(fd);
+      });
+    }
+
+    async function pollUploadJob(jobId) {
+      for (let i = 0; i < 600; i++) {
+        const job = await api(`/api/worlds/upload/${jobId}/status`);
+        if (job.status === "uploading" || job.status === "queued" || job.status === "extracting") {
+          const mb = job.received ? `${(job.received / 1024 / 1024).toFixed(1)} MB` : "";
+          setProgress(100, job.message || `Processing… ${mb}`);
+          await new Promise(r => setTimeout(r, 2000));
+          continue;
+        }
+        if (job.status === "done") return job;
+        if (job.status === "error") throw new Error(job.message || "Extract failed");
+        await new Promise(r => setTimeout(r, 2000));
+      }
+      throw new Error("Processing timed out");
+    }
+
     async function uploadWorld(file) {
       if (!file) { showToast("Drop a .zip first", true); return; }
       const name = document.getElementById("worldName").value.trim();
-      const fd = new FormData();
-      fd.append("file", file);
-      if (name) fd.append("name", name);
       uploadBtn.disabled = true;
       dropzone.style.pointerEvents = "none";
-      showToast("Uploading world…");
+      setProgress(0, "Starting upload…");
       try {
-        await api("/api/worlds/upload", { method: "POST", body: fd });
+        const res = await uploadWithProgress(file, name);
+        if (res.job_id) {
+          setProgress(100, "Extracting world on phone…");
+          await pollUploadJob(res.job_id);
+        }
         showToast("World uploaded!");
         clearPendingFile();
         document.getElementById("worldName").value = "";
@@ -653,6 +736,7 @@
       } finally {
         uploadBtn.disabled = false;
         dropzone.style.pointerEvents = "";
+        hideProgress();
       }
     }
 
