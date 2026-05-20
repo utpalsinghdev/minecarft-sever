@@ -111,6 +111,20 @@ Friends connect to `<your-ip>:25565` with the same Minecraft version.
 | Version mismatch | Use Minecraft **26.1.2** on client and server |
 | World won't switch | Allow ~1 min for copy + restart; check logs |
 
+## Run on an old Android phone (24/7)
+
+| Guide | Use case |
+|-------|----------|
+| **[docs/TERMUX-MAC-DOCKER.md](docs/TERMUX-MAC-DOCKER.md)** | **Termux + SSH from Mac + Docker** (recommended) |
+| [docs/ANDROID.md](docs/ANDROID.md) | Overview, Termux-only fallback, feasibility |
+
+Helper scripts: `scripts/termux-boot-sshd.sh`, `scripts/ubuntu-start-docker.sh`, `scripts/termux-boot-nexus.sh`
+
+```bash
+# Low-RAM overlay (Linux on Android)
+docker compose -f docker-compose.yml -f docker-compose.android.yml up -d --build
+```
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
