@@ -1,0 +1,37 @@
+services:
+  minecraft:
+    image: itzg/minecraft-server:latest
+    container_name: nexus-minecraft
+    ports:
+      - "25565:25565"
+    environment:
+      EULA: "TRUE"
+      TYPE: "VANILLA"
+      VERSION: "26.1.2"
+      LEVEL: "world"
+      MEMORY: "2G"
+      ONLINE_MODE: "false"
+      OVERRIDE_SERVER_PROPERTIES: "true"
+    volumes:
+      - mc-data:/data
+      # runtime is synced from the selected world (symlinks don't update on restart)
+      - ./worlds/runtime:/data/world
+    restart: unless-stopped
+
+  web:
+    build: ./web
+    container_name: nexus-web
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./worlds:/worlds
+      - ./config:/config
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      MINECRAFT_CONTAINER: nexus-minecraft
+      # Must match your Minecraft login name (set in .env)
+      DEFAULT_PLAYER: ${DEFAULT_PLAYER:-Steve}
+    restart: unless-stopped
+
+volumes:
+  mc-data:

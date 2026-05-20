@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nexus — Minecraft Worlds</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --sky-top: #3a7ca5;
+      --sky-mid: #5ba3d9;
+      --sky-bottom: #87ceeb;
+      --grass-light: #6eca3f;
+      --grass-mid: #5d9c2e;
+      --grass-dark: #3d7a1e;
+      --dirt: #866043;
+      --dirt-dark: #593d29;
+      --stone: #8b8b8b;
+      --stone-dark: #5a5a5a;
+      --stone-darker: #3a3a3a;
+      --gui-bg: #c6c6c6;
+      --gui-dark: #373737;
+      --gui-slot: #8b8b8b;
+      --text: #ffffff;
+      --text-dark: #3f3f3f;
+      --text-shadow: 2px 2px 0 #3f3f3f;
+      --gold: #ffaa00;
+      --gold-dark: #c77f00;
+      --red: #c0392b;
+      --red-dark: #922b21;
+      --pixel: "Press Start 2P", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--pixel);
+      font-size: 10px;
+      line-height: 1.6;
+      color: var(--text);
+      background:
+        linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 35%, var(--sky-bottom) 55%, var(--grass-mid) 55%, var(--grass-dark) 100%);
+      image-rendering: pixelated;
+    }
+
+    /* subtle cloud dots */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image:
+        radial-gradient(circle, rgba(255,255,255,0.5) 2px, transparent 2px);
+      background-size: 80px 60px;
+      background-position: 20px 40px;
+      opacity: 0.35;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrap {
+      position: relative;
+      z-index: 1;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 0 1rem 3rem;
+    }
+
+    /* ── Header grass bar ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+      background: var(--grass-mid);
+      border-bottom: 4px solid var(--grass-dark);
+      box-shadow:
+        inset 0 4px 0 var(--grass-light),
+        inset 0 -4px 0 var(--dirt),
+        0 6px 0 var(--dirt-dark);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .grass-block {
+      width: 40px;
+      height: 40px;
+      flex-shrink: 0;
+      background:
+        linear-gradient(180deg, var(--grass-light) 0%, var(--grass-light) 50%, var(--dirt) 50%, var(--dirt-dark) 100%);
+      border: 3px solid #000;
+      box-shadow: inset -3px -3px 0 rgba(0,0,0,0.25);
+      image-rendering: pixelated;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 14px;
+      text-shadow: var(--text-shadow);
+      line-height: 1.4;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      background: rgba(0,0,0,0.35);
+      border: 3px solid #000;
+      font-size: 8px;
+      text-shadow: 1px 1px 0 #000;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      background: var(--red);
+      border: 2px solid #000;
+      flex-shrink: 0;
+    }
+
+    .dot.running {
+      background: #55ff55;
+      box-shadow: 0 0 6px #55ff55;
+    }
+
+    main { display: flex; flex-direction: column; gap: 1.25rem; }
+
+    /* ── Panel = stone GUI ── */
+    section {
+      background: var(--gui-bg);
+      border: 4px solid #000;
+      box-shadow:
+        inset 4px 4px 0 #fff,
+        inset -4px -4px 0 var(--gui-slot),
+        6px 6px 0 rgba(0,0,0,0.4);
+      padding: 1.25rem 1.5rem;
+      color: var(--text-dark);
+    }
+
+    section h2 {
+      margin: 0 0 1rem;
+      font-size: 10px;
+      color: var(--text-dark);
+      text-shadow: none;
+      padding-bottom: 0.5rem;
+      border-bottom: 3px solid var(--gui-slot);
+    }
+
+    .hint, label {
+      font-size: 8px;
+      color: #555;
+      line-height: 1.8;
+    }
+
+    label { display: block; margin-bottom: 0.4rem; }
+
+    code {
+      background: var(--gui-dark);
+      color: #fff;
+      padding: 2px 6px;
+      font-size: 8px;
+      border: 2px solid #000;
+    }
+
+    /* ── Minecraft button ── */
+    button {
+      font-family: var(--pixel);
+      font-size: 8px;
+      cursor: pointer;
+      border: 3px solid #000;
+      padding: 0.6rem 1rem;
+      text-shadow: 1px 1px 0 rgba(0,0,0,0.4);
+      transition: transform 0.05s, filter 0.05s;
+      image-rendering: pixelated;
+    }
+
+    button:active:not(:disabled) {
+      transform: translate(2px, 2px);
+      box-shadow: none !important;
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      filter: grayscale(0.5);
+    }
+
+    button.mc-primary {
+      background: var(--grass-mid);
+      color: #fff;
+      box-shadow:
+        inset 0 3px 0 var(--grass-light),
+        inset 0 -3px 0 var(--grass-dark),
+        4px 4px 0 rgba(0,0,0,0.35);
+    }
+
+    button.mc-primary:hover:not(:disabled) {
+      background: var(--grass-light);
+    }
+
+    button.mc-secondary {
+      background: var(--stone);
+      color: #fff;
+      box-shadow:
+        inset 0 3px 0 #aaa,
+        inset 0 -3px 0 var(--stone-dark),
+        4px 4px 0 rgba(0,0,0,0.35);
+    }
+
+    button.mc-secondary:hover:not(:disabled) {
+      background: #9e9e9e;
+    }
+
+    button.mc-danger {
+      background: var(--red);
+      color: #fff;
+      box-shadow:
+        inset 0 3px 0 #e74c3c,
+        inset 0 -3px 0 var(--red-dark),
+        4px 4px 0 rgba(0,0,0,0.35);
+    }
+
+    button.mc-danger:hover:not(:disabled) {
+      background: #e74c3c;
+    }
+
+    /* ── Inputs = anvil slot style ── */
+    input[type="text"] {
+      font-family: var(--pixel);
+      font-size: 8px;
+      background: #000;
+      color: #fff;
+      border: 3px solid var(--gui-slot);
+      padding: 0.6rem 0.75rem;
+      min-width: 200px;
+      outline: none;
+    }
+
+    input[type="text"]::placeholder { color: #666; }
+
+    input[type="text"]:focus {
+      border-color: var(--grass-mid);
+      box-shadow: 0 0 0 2px var(--grass-light);
+    }
+
+    /* ── Dropzone = map on crafting table ── */
+    .dropzone {
+      border: 4px dashed var(--gui-slot);
+      background:
+        repeating-linear-gradient(
+          0deg,
+          #a8a8a8 0px, #a8a8a8 8px,
+          #9a9a9a 8px, #9a9a9a 16px
+        );
+      padding: 2rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      margin-bottom: 1rem;
+      transition: border-color 0.1s, background 0.1s;
+    }
+
+    .dropzone:hover,
+    .dropzone.dragover {
+      border-color: var(--grass-mid);
+      background-color: rgba(93, 156, 46, 0.25);
+      border-style: solid;
+    }
+
+    .dropzone input[type="file"] { display: none; }
+
+    .dropzone-icon {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 0.75rem;
+      background: var(--dirt);
+      border: 3px solid #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      box-shadow: inset -3px -3px 0 var(--dirt-dark);
+    }
+
+    .dropzone-title {
+      font-size: 9px;
+      color: var(--text-dark);
+      margin: 0 0 0.5rem;
+    }
+
+    .dropzone-sub {
+      font-size: 8px;
+      color: #666;
+      margin: 0;
+    }
+
+    .browse-link {
+      color: var(--grass-dark);
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    .browse-link:hover { color: var(--grass-mid); }
+
+    .dropzone-file {
+      margin-top: 0.75rem;
+      font-size: 8px;
+      color: var(--grass-dark);
+      word-break: break-all;
+    }
+
+    .upload-row {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+
+    /* ── World list = inventory slots ── */
+    .world-list { list-style: none; padding: 0; margin: 0; }
+
+    .world-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+      background: #a0a0a0;
+      border: 3px solid #000;
+      box-shadow: inset 3px 3px 0 #d0d0d0, inset -3px -3px 0 #606060;
+      flex-wrap: wrap;
+    }
+
+    .world-item:last-child { margin-bottom: 0; }
+
+    .world-item.active-slot {
+      background: #b8e986;
+      box-shadow:
+        inset 3px 3px 0 #d4f5a8,
+        inset -3px -3px 0 var(--grass-dark),
+        0 0 0 2px var(--gold);
+    }
+
+    .world-icon {
+      width: 36px;
+      height: 36px;
+      flex-shrink: 0;
+      background: var(--grass-mid);
+      border: 2px solid #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .world-item.active-slot .world-icon {
+      background: var(--gold);
+    }
+
+    .world-meta {
+      flex: 1;
+      min-width: 140px;
+    }
+
+    .world-meta strong {
+      display: block;
+      font-size: 9px;
+      color: var(--text-dark);
+      margin-bottom: 0.25rem;
+    }
+
+    .world-meta span {
+      font-size: 7px;
+      color: #555;
+    }
+
+    .badge {
+      font-size: 7px;
+      padding: 0.35rem 0.5rem;
+      background: var(--gold);
+      color: #000;
+      border: 2px solid #000;
+      box-shadow: inset 0 2px 0 #ffd54f;
+      text-shadow: none;
+    }
+
+    .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+
+    .empty {
+      font-size: 8px;
+      color: #666;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .connect {
+      font-size: 8px;
+      line-height: 2;
+      color: var(--text-dark);
+    }
+
+    .connect strong { color: #000; }
+
+    /* ── Achievement-style toast ── */
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(120%);
+      padding: 0.75rem 1.25rem;
+      background: var(--gui-dark);
+      color: #fff;
+      border: 4px solid #000;
+      box-shadow: 6px 6px 0 rgba(0,0,0,0.5);
+      font-size: 8px;
+      text-shadow: 1px 1px 0 #000;
+      z-index: 200;
+      transition: transform 0.25s ease;
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    .toast.error {
+      background: var(--red-dark);
+      border-color: #000;
+    }
+
+    .toast::before {
+      content: "☺ ";
+      color: var(--gold);
+    }
+
+    .toast.error::before {
+      content: "☹ ";
+      color: #fff;
+    }
+
+    @media (max-width: 600px) {
+      h1 { font-size: 10px; }
+      .wrap { padding: 0 0.5rem 2rem; }
+      section { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">
+        <div class="grass-block" aria-hidden="true"></div>
+        <h1>NEXUS<br>WORLD MANAGER</h1>
+      </div>
+      <div class="status">
+        <span class="dot" id="statusDot"></span>
+        <span id="statusText">Checking server…</span>
+      </div>
+    </header>
+
+    <main>
+      <section>
+        <h2>› Upload World</h2>
+        <div class="dropzone" id="dropzone">
+          <input type="file" id="zipFile" accept=".zip,application/zip" />
+          <div class="dropzone-icon">📦</div>
+          <p class="dropzone-title">Drag &amp; drop .zip here</p>
+          <p class="dropzone-sub">or <span class="browse-link" id="browseLink">browse files</span></p>
+          <p class="dropzone-file" id="dropFileName" hidden></p>
+        </div>
+        <div class="upload-row">
+          <div>
+            <label for="worldName">World name (optional)</label>
+            <input type="text" id="worldName" placeholder="my-world" />
+          </div>
+          <button type="button" class="mc-primary" id="uploadBtn">Upload</button>
+        </div>
+        <p class="hint">Needs <code>level.dat</code> inside the zip. Drop = instant upload.</p>
+      </section>
+
+      <section>
+        <h2>› Your Worlds</h2>
+        <ul class="world-list" id="worldList"></ul>
+        <p class="empty" id="emptyMsg" style="display:none">No worlds yet — upload one above!</p>
+      </section>
+
+      <section>
+        <h2>› Play Multiplayer</h2>
+        <p class="connect">
+          Address: <code>localhost</code><br>
+          Port: <code>25565</code><br>
+          Version: <strong>26.1.2</strong>
+        </p>
+        <div class="actions" style="margin-top:1rem">
+          <button type="button" class="mc-secondary" id="restartBtn">Restart Server</button>
+          <button type="button" class="mc-secondary" id="refreshBtn">Refresh</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const toast = document.getElementById("toast");
+    function showToast(msg, isError = false) {
+      toast.textContent = msg;
+      toast.className = "toast show" + (isError ? " error" : "");
+      setTimeout(() => toast.classList.remove("show"), 4000);
+    }
+
+    async function api(path, opts = {}) {
+      const res = await fetch(path, opts);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || data.message || res.statusText);
+      return data;
+    }
+
+    async function loadStatus() {
+      try {
+        const s = await api("/api/server/status");
+        const dot = document.getElementById("statusDot");
+        const text = document.getElementById("statusText");
+        dot.className = "dot" + (s.running ? " running" : "");
+        text.textContent = s.running ? "Server Online" : `Server: ${s.status}`;
+      } catch {
+        document.getElementById("statusText").textContent = "Server Offline";
+      }
+    }
+
+    async function loadWorlds() {
+      const { worlds } = await api("/api/worlds");
+      const list = document.getElementById("worldList");
+      const empty = document.getElementById("emptyMsg");
+      list.innerHTML = "";
+      if (!worlds.length) {
+        empty.style.display = "block";
+        return;
+      }
+      empty.style.display = "none";
+      for (const w of worlds) {
+        const li = document.createElement("li");
+        li.className = "world-item" + (w.active ? " active-slot" : "");
+        li.innerHTML = `
+          <div class="world-icon">${w.active ? "★" : "🌍"}</div>
+          <div class="world-meta">
+            <strong>${escapeHtml(w.display_name)}</strong>
+            <span>${w.size_mb} MB · ${w.id}</span>
+          </div>
+          <div class="actions">
+            ${w.active ? '<span class="badge">ACTIVE</span>' : `<button type="button" class="mc-primary" data-activate="${w.id}">Play</button>`}
+            ${!w.active ? `<button type="button" class="mc-danger" data-delete="${w.id}">Delete</button>` : ""}
+          </div>
+        `;
+        list.appendChild(li);
+      }
+      list.querySelectorAll("[data-activate]").forEach(btn => {
+        btn.addEventListener("click", () => activate(btn.dataset.activate));
+      });
+      list.querySelectorAll("[data-delete]").forEach(btn => {
+        btn.addEventListener("click", () => del(btn.dataset.delete));
+      });
+    }
+
+    function escapeHtml(s) {
+      const d = document.createElement("div");
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    async function activate(id) {
+      if (!confirm(`Switch to "${id}"? Server will restart.`)) return;
+      showToast("Copying world… please wait");
+      try {
+        await api(`/api/worlds/${id}/activate`, { method: "POST" });
+        showToast(`Now playing: ${id}`);
+        await loadWorlds();
+        await loadStatus();
+      } catch (e) {
+        showToast(e.message, true);
+      }
+    }
+
+    async function del(id) {
+      if (!confirm(`Delete "${id}" forever?`)) return;
+      try {
+        await api(`/api/worlds/${id}`, { method: "DELETE" });
+        showToast(`Deleted ${id}`);
+        await loadWorlds();
+      } catch (e) {
+        showToast(e.message, true);
+      }
+    }
+
+    let pendingFile = null;
+    const zipInput = document.getElementById("zipFile");
+    const dropzone = document.getElementById("dropzone");
+    const dropFileName = document.getElementById("dropFileName");
+    const uploadBtn = document.getElementById("uploadBtn");
+
+    function isZip(file) {
+      return file && (file.name.toLowerCase().endsWith(".zip") || file.type === "application/zip" || file.type === "application/x-zip-compressed");
+    }
+
+    function setPendingFile(file) {
+      if (!isZip(file)) {
+        showToast("Only .zip files!", true);
+        return false;
+      }
+      pendingFile = file;
+      dropFileName.textContent = "📦 " + file.name;
+      dropFileName.hidden = false;
+      if (!document.getElementById("worldName").value.trim()) {
+        document.getElementById("worldName").placeholder = file.name.replace(/\.zip$/i, "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      }
+      return true;
+    }
+
+    function clearPendingFile() {
+      pendingFile = null;
+      zipInput.value = "";
+      dropFileName.hidden = true;
+      document.getElementById("worldName").placeholder = "my-world";
+    }
+
+    async function uploadWorld(file) {
+      if (!file) { showToast("Drop a .zip first", true); return; }
+      const name = document.getElementById("worldName").value.trim();
+      const fd = new FormData();
+      fd.append("file", file);
+      if (name) fd.append("name", name);
+      uploadBtn.disabled = true;
+      dropzone.style.pointerEvents = "none";
+      showToast("Uploading world…");
+      try {
+        await api("/api/worlds/upload", { method: "POST", body: fd });
+        showToast("World uploaded!");
+        clearPendingFile();
+        document.getElementById("worldName").value = "";
+        await loadWorlds();
+      } catch (e) {
+        showToast(e.message, true);
+      } finally {
+        uploadBtn.disabled = false;
+        dropzone.style.pointerEvents = "";
+      }
+    }
+
+    document.getElementById("browseLink").addEventListener("click", (e) => {
+      e.stopPropagation();
+      zipInput.click();
+    });
+
+    dropzone.addEventListener("click", () => zipInput.click());
+
+    zipInput.addEventListener("change", () => {
+      const file = zipInput.files[0];
+      if (file) setPendingFile(file);
+    });
+
+    ["dragenter", "dragover"].forEach(evt => {
+      dropzone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.add("dragover");
+      });
+    });
+
+    ["dragleave", "drop"].forEach(evt => {
+      dropzone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.remove("dragover");
+      });
+    });
+
+    dropzone.addEventListener("drop", async (e) => {
+      const file = e.dataTransfer.files[0];
+      if (!file) return;
+      if (!setPendingFile(file)) return;
+      await uploadWorld(file);
+    });
+
+    uploadBtn.addEventListener("click", async () => {
+      await uploadWorld(pendingFile || zipInput.files[0]);
+    });
+
+    document.getElementById("restartBtn").addEventListener("click", async () => {
+      showToast("Restarting server…");
+      try {
+        await api("/api/server/restart", { method: "POST" });
+        showToast("Server restarted!");
+        await loadStatus();
+      } catch (e) {
+        showToast(e.message, true);
+      }
+    });
+
+    document.getElementById("refreshBtn").addEventListener("click", async () => {
+      await loadWorlds();
+      await loadStatus();
+      showToast("Refreshed");
+    });
+
+    (async () => {
+      await loadStatus();
+      await loadWorlds();
+      setInterval(loadStatus, 15000);
+    })();
+  </script>
+</body>
+</html>

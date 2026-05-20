@@ -1,0 +1,12 @@
+__pycache__
+*.pyc
+.venv
+.git
+.gitignore
+README.md
+worlds/
+config/
+New World/
+.env
+.env.example
+*.md
