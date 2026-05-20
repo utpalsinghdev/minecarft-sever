@@ -12,7 +12,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 136M
+          memory: 1536M
 
   web:
     deploy:
